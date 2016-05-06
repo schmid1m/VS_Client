@@ -2,4 +2,5 @@
 *.user
 Makefile*
 vs_client
-
+vslabc
+*.txt
