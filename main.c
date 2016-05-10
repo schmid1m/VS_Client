@@ -9,20 +9,22 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include "VS_LAB/Macros.h"
 #include "VS_LAB/clientAPI.h"
 #include "VS_LAB/commonAPI.h"
 
-#define BLOCKLEN 8
+#define BLOCKLEN 25000
 
 // Arguments:
 // vslabc <infile> <outfile> <ip>
 int main(int argc, char **argv)
 {
     uint8_t gp[2], **out_data, iReturn, *ip_ptr;
-    uint16_t in_data[BLOCKLEN], blockID = 0;
+    uint16_t in_data[BLOCKLEN], resBlockID, blockID = 0;
     uint32_t senderIP, length;
+    bool newDataWanted = true;
     FILE *fpIn, *fpOut;
     msg msg_ptr;
     FID msg_type;
@@ -54,97 +56,126 @@ int main(int argc, char **argv)
 
     /*****************************************************************************/
 
-    // read in generator polynom & send it out
+    // read in generator polynom
     fread(&gp,sizeof(uint8_t),2,fpIn);
-    iReturn = send_gp_req((gp[0] << 8) + gp[1], inet_network(argv[3]));
-    if(iReturn != NO_ERROR) {
-        printf("Client: GP (%#x) sent out failed: %d\n", (gp[0] << 8) + gp[1], iReturn);
-        return -1;
-    } else {
-        printf("Client: GP (%#x) sent out worked\n", (gp[0] << 8) + gp[1]);
-    }
+    while(1)
+    {
+        // send it out
+        iReturn = send_gp_req((gp[0] << 8) + gp[1], inet_network(argv[3]));
+        if(iReturn != NO_ERROR) {
+            printf("Client: GP (%#x) sent out failed: %d\n", (gp[0] << 8) + gp[1], iReturn);
+            continue;
+        } else {
+            printf("Client: GP (%#x) sent out worked\n", (gp[0] << 8) + gp[1]);
+        }
 
-    // receive gp-set-response
-    iReturn = recv_msg(&msg_ptr, &senderIP);
-    msg_type = get_msg_type(&msg_ptr);
-    if(iReturn != NO_ERROR && msg_type == GP_RSP) {
-        printf("Client: No gp response received: %d\n", iReturn);
-        return -1;
-    } else {
-        ip_ptr = (uint8_t*)&senderIP;
-        printf("Client: Received gp response from %d.%d.%d.%d\n", ip_ptr[3],ip_ptr[2],ip_ptr[1],ip_ptr[0]);
-        free_msg(&msg_ptr);
+        // receive gp-set-response
+        iReturn = recv_msg(&msg_ptr, &senderIP);
+        msg_type = get_msg_type(&msg_ptr);
+        if(iReturn != NO_ERROR && msg_type == GP_RSP) {
+            printf("Client: No gp response received: %d\n\n", iReturn);
+            continue;
+        } else {
+            ip_ptr = (uint8_t*)&senderIP;
+            printf("Client: Received gp response from %d.%d.%d.%d\n\n", ip_ptr[3],ip_ptr[2],ip_ptr[1],ip_ptr[0]);
+            free_msg(&msg_ptr);
+            break;
+        }
     }
 
     /*****************************************************************************/
 
-    // read in data & send it out
-    fread(&in_data,sizeof(uint16_t),BLOCKLEN,fpIn);
-    for(uint32_t i=0; i<BLOCKLEN; i++)
+    while(1)
     {
-        in_data[i] = htons(in_data[i]); // correcting the byteorder
-    }
-    printf("Client: Read in data: ");
-    for(uint32_t i=0; i<BLOCKLEN; i++)
-    {
-        printf("%#x ", in_data[i]);
-    }
-    printf("\n");
-    iReturn = send_dec_req(blockID, in_data, BLOCKLEN, inet_network(argv[3]));
-    if(iReturn != NO_ERROR) {
-        printf("Client: Sending out data was not successful: %d\n", iReturn);
-        return -1;
-    } else {
-        printf("Client: Sending out data worked\n");
-    }
-
-    // receive scrambled data
-    iReturn = recv_msg(&msg_ptr, &senderIP);
-    msg_type = get_msg_type(&msg_ptr);
-    if(iReturn != NO_ERROR && msg_type == DECRYPT_RSP) {
-        printf("Client: No data response received: %d\n", iReturn);
-        return -1;
-    } else {
-        ip_ptr = (uint8_t*)&senderIP;
-        printf("Client: Received data response from %d.%d.%d.%d\n", ip_ptr[3],ip_ptr[2],ip_ptr[1],ip_ptr[0]);
-    }
-
-    // print result
-    iReturn = extract_dec_rsp(&msg_ptr, &blockID, out_data, &length);
-    if(iReturn != NO_ERROR) {
-        printf("Client: An error occured during extracting the data packet: %d\n", iReturn);
-        return -1;
-    } else {
-        printf("        with length %d and seq nr %d\n", length, blockID);
-        if(BLOCKLEN < 50)
-        {
-            (*out_data)[length] = '\0';
-            printf("Client: Received data: %s \n", *out_data);
+        // read in data
+        if(newDataWanted) {
+            length = fread(&in_data,sizeof(uint16_t),BLOCKLEN,fpIn);
+            if(length < 1)
+                break;
+            for(uint32_t i=0; i<length; i++)
+            {
+                in_data[i] = htons(in_data[i]); // correcting byteorder
+            }
+            printf("Client: Read in data: ");
+            if(BLOCKLEN < 20)
+                for(uint32_t i=0; i<length; i++)
+                    printf("%#x ", in_data[i]);
+            else
+                printf("...");
+            printf("\n");
+            newDataWanted = false;
         }
-        free_msg(&msg_ptr);
+
+        // send it out
+        iReturn = send_dec_req(blockID, in_data, length, inet_network(argv[3]));
+        if(iReturn != NO_ERROR) {
+            printf("Client: Sending out data was not successful: %d\n", iReturn);
+            continue;
+        } else {
+            printf("Client: Sending out data worked\n");
+        }
+
+        // receive scrambled data
+        iReturn = recv_msg(&msg_ptr, &senderIP);
+        msg_type = get_msg_type(&msg_ptr);
+        if(iReturn != NO_ERROR && msg_type == DECRYPT_RSP) {
+            printf("Client: No data response received: %d\n", iReturn);
+            continue;
+        } else {
+            ip_ptr = (uint8_t*)&senderIP;
+            printf("Client: Received data response from %d.%d.%d.%d\n", ip_ptr[3],ip_ptr[2],ip_ptr[1],ip_ptr[0]);
+        }
+
+        // print & write out result
+        iReturn = extract_dec_rsp(&msg_ptr, &resBlockID, out_data, &length);
+        if(iReturn != NO_ERROR) {
+            printf("Client: An error occured during extracting the data packet: %d\n\n", iReturn);
+            free_msg(&msg_ptr);
+            continue;
+        } else if(resBlockID != blockID) {
+            printf("Client: Received blockID %d, expected blockID %d\n\n", resBlockID, blockID);
+            free_msg(&msg_ptr);
+            continue;
+        } else {
+            printf("        with length %d and block id %d\n", length, blockID);
+            (*out_data)[length] = '\0';
+            fwrite(*out_data, 1, length, fpOut);
+            if(BLOCKLEN < 20)
+                printf("Client: Received data: %s \n", *out_data);
+            printf("\n");
+            blockID++;
+            newDataWanted = true;
+            free_msg(&msg_ptr);
+        }
     }
 
     /*****************************************************************************/
 
     // unlock server
-    iReturn = send_unlock_req(inet_network(argv[3]));
-    if(iReturn != NO_ERROR) {
-        printf("Client: Sending unlock request was not successful: %d\n", iReturn);
-        return -1;
-    } else {
-        printf("Client: Sending unlock request worked\n");
+    while(1)
+    {
+        iReturn = send_unlock_req(inet_network(argv[3]));
+        if(iReturn != NO_ERROR) {
+            printf("Client: Sending unlock request was not successful: %d\n", iReturn);
+            continue;
+        } else {
+            printf("Client: Sending unlock request worked\n");
+        }
+
+        // receive unlock response
+        iReturn = recv_msg(&msg_ptr, &senderIP);
+        msg_type = get_msg_type(&msg_ptr);
+        if(iReturn != NO_ERROR && msg_type == UNLOCK_RSP) {
+            printf("Client: No unlock response received: %d\n\n", iReturn);
+            continue;
+        } else {
+            ip_ptr = (uint8_t*)&senderIP;
+            printf("Client: Received unlock response from %d.%d.%d.%d\n\n", ip_ptr[3],ip_ptr[2],ip_ptr[1],ip_ptr[0]);
+            break;
+        }
     }
 
-    // receive unlock response
-    iReturn = recv_msg(&msg_ptr, &senderIP);
-    msg_type = get_msg_type(&msg_ptr);
-    if(iReturn != NO_ERROR && msg_type == UNLOCK_RSP) {
-        printf("Client: No unlock response received: %d\n", iReturn);
-        return -1;
-    } else {
-        ip_ptr = (uint8_t*)&senderIP;
-        printf("Client: Received unlock response from %d.%d.%d.%d\n", ip_ptr[3],ip_ptr[2],ip_ptr[1],ip_ptr[0]);
-    }
+    /*****************************************************************************/
 
     // deinit socket
     deinit_client();
