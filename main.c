@@ -16,7 +16,7 @@
 #include "VS_LAB/commonAPI.h"
 #include "VS_LAB/Macros.h"
 
-#define BLOCKLEN 5000
+#define BLOCKLEN 25000
 
 // Arguments:
 // vslabc <infile> <outfile> <ip>
