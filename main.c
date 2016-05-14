@@ -149,11 +149,13 @@ int main(int argc, char **argv)
 		if(iReturn != NO_ERROR) {
 			printf("Client: An error occured during extracting the data packet: %d\n\n", iReturn);
 			free_msg(&msg_ptr);
-			sleep(1); continue;
+            free_data(*out_data);
+            sleep(1); continue;
 		} else if(resBlockID != blockID) {
 			printf("Client: Received blockID %d, expected blockID %d\n\n", resBlockID, blockID);
 			free_msg(&msg_ptr);
-			sleep(1); continue;
+            free_data(*out_data);
+            sleep(1); continue;
 		} else {
 			printf("        with length %d and block id %d\n", length, blockID);
 			(*out_data)[length] = '\0';
@@ -163,7 +165,8 @@ int main(int argc, char **argv)
 			printf("\n");
 			blockID++;
 			newDataWanted = true;
-			free_msg(&msg_ptr);
+            free_data(*out_data);
+            free_msg(&msg_ptr);
 		}
 	}
 
