@@ -7,5 +7,16 @@ CONFIG -= app_bundle
 
 TEMPLATE = app
 
-SOURCES += main.cpp
+SOURCES += main.cpp \
+    VS_LAB/clientAPI.c \
+    VS_LAB/PacketLib.c \
+    vs_client.cpp
+
+HEADERS += \
+    VS_LAB/clientAPI.h \
+    VS_LAB/commonAPI.h \
+    VS_LAB/internalMacros.h \
+    VS_LAB/Macros.h \
+    VS_LAB/PacketLib.h \
+    vs_client.h
 
