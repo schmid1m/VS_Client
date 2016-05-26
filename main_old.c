@@ -1,8 +1,8 @@
 /**************************************************************
 **  File        : main.c (client)                            **
-**  Version     : 1.1                                        **
+**  Version     : 1.0                                        **
 **  Created     : 03.05.2016                                 **
-**  Last change : 17.05.2016                                 **
+**  Last change : 10.05.2016                                 **
 **  Project     : Verteilte Systeme Labor                    **
 **************************************************************/
 
@@ -16,7 +16,7 @@
 #include "VS_LAB/commonAPI.h"
 #include "VS_LAB/Macros.h"
 
-#define BLOCKLEN 16500
+#define BLOCKLEN 128
 
 // Arguments:
 // vslabc <infile> <outfile> <ip>
@@ -27,18 +27,18 @@ int main(int argc, char **argv)
 	uint32_t senderIP, length, i;
 	bool newDataWanted = true;
 	FILE *fpIn, *fpOut;
-	msg msg;
+	msg msg_ptr;
 	FID msg_type;
 
     out_data = malloc(sizeof(uint8_t*));
 
 	// introduce yourself
-	printf("VSLab client, build %s %s\n\n", __DATE__, __TIME__);
+	printf("VSLab client, build %s %s\n", __DATE__, __TIME__);
 
 	// check command line parameters
 	if (argc < 4) {
 		printf("Missing arguments!\n");
-		printf("Usage: main.c infile outfile server-ip\n");
+		printf("Usage: main.c infile outfile ip\n");
 		return -1;
 	}
 
@@ -68,39 +68,29 @@ int main(int argc, char **argv)
     {  	// send it out
     	iReturn = send_gp_req((gp[0] << 8) + gp[1], inet_network(argv[3]));
     	if(iReturn != NO_ERROR) {
-    		printf("Client: GP %#x sent out failed: %d\n", (gp[0] << 8) + gp[1], iReturn);
+    		printf("Client: GP (%#x) sent out failed: %d\n", (gp[0] << 8) + gp[1], iReturn);
     		sleep(1); continue;
     	} else {
-    		printf("Client: GP %#x sent out to %s\n", (gp[0] << 8) + gp[1], argv[3]);
+    		printf("Client: GP (%#x) sent out worked\n", (gp[0] << 8) + gp[1]);
     	}
 
     	// receive gp-set-response
     	tol_start_timeout(TOL_TIMEOUT_SECS);
-    	iReturn = recv_msg(&msg, &senderIP);
+    	iReturn = recv_msg(&msg_ptr, &senderIP);
     	tol_stop_timeout();
-        if(tol_is_timed_out()) {
+        if (tol_is_timed_out()) {
             tol_reset_timeout();
-            printf("Client: Timeout // Server @ %s unreachable // Quit\n",argv[3]);
-            return -1;
-            //printf("Client: Timeout --> Send GP-Request again\n");
-            //continue;
+            printf("Client: Timeout --> Send GP-Request again\n");
+            continue;
         }
-    	msg_type = get_msg_type(&msg);
+    	msg_type = get_msg_type(&msg_ptr);
     	if(iReturn != NO_ERROR || msg_type != GP_RSP) {
-    		if(iReturn == ERR_INVALIDVERSION) {
-    			printf("Client: Server is working with different protocol version: %d\n\n", iReturn);
-    			return -1;
-    		}
-    		else if(((error*)(msg.data))->errCode == ERR_NOSUCHFUNCTION) {
-    			printf("Client: Server is not familiar with function: %d\n\n", iReturn);
-    			return -1;
-    		}
     		printf("Client: No gp response received: %d\n\n", iReturn);
     		sleep(1); continue;
     	} else {
     		ip_ptr = (uint8_t*)&senderIP;
     		printf("Client: Received gp response from %d.%d.%d.%d\n\n", ip_ptr[3],ip_ptr[2],ip_ptr[1],ip_ptr[0]);
-    		free_msg(&msg);
+    		free_msg(&msg_ptr);
     		break;
     	}
     }
@@ -138,14 +128,14 @@ int main(int argc, char **argv)
 
 		// receive scrambled data
 		tol_start_timeout(TOL_TIMEOUT_SECS);
-		iReturn = recv_msg(&msg, &senderIP);
+		iReturn = recv_msg(&msg_ptr, &senderIP);
 		tol_stop_timeout();
         if (tol_is_timed_out()) {
             tol_reset_timeout();
             printf("Client: Timeout --> Send data again (Block-ID %d)\n", blockID);
             continue;
         }
-		msg_type = get_msg_type(&msg);
+		msg_type = get_msg_type(&msg_ptr);
 		if(iReturn != NO_ERROR || msg_type != DECRYPT_RSP) {
 			printf("Client: No data response received: %d\n", iReturn);
 			sleep(1); continue;
@@ -155,17 +145,17 @@ int main(int argc, char **argv)
 		}
 
 		// print & write out result
-		iReturn = extract_dec_rsp(&msg, &resBlockID, out_data, &length);
+		iReturn = extract_dec_rsp(&msg_ptr, &resBlockID, out_data, &length);
 		if(iReturn != NO_ERROR) {
 			printf("Client: An error occured during extracting the data packet: %d\n\n", iReturn);
-			free_msg(&msg);
-			free_data(*out_data);
-			sleep(1); continue;
+			free_msg(&msg_ptr);
+            free_data(*out_data);
+            sleep(1); continue;
 		} else if(resBlockID != blockID) {
 			printf("Client: Received blockID %d, expected blockID %d\n\n", resBlockID, blockID);
-			free_msg(&msg);
-			free_data(*out_data);
-			sleep(1); continue;
+			free_msg(&msg_ptr);
+            free_data(*out_data);
+            sleep(1); continue;
 		} else {
 			printf("        with length %d and block id %d\n", length, blockID);
 			(*out_data)[length] = '\0';
@@ -175,8 +165,8 @@ int main(int argc, char **argv)
 			printf("\n");
 			blockID++;
 			newDataWanted = true;
-			free_data(*out_data);
-			free_msg(&msg);
+            free_data(*out_data);
+            free_msg(&msg_ptr);
 		}
 	}
 
@@ -192,13 +182,13 @@ int main(int argc, char **argv)
 
    	// receive unlock response
    	tol_start_timeout(TOL_TIMEOUT_SECS);
-   	iReturn = recv_msg(&msg, &senderIP);
+   	iReturn = recv_msg(&msg_ptr, &senderIP);
 	tol_stop_timeout();
     if (tol_is_timed_out()) {
         tol_reset_timeout();
         printf("Client: Timeout --> No Unlock Response received\n");
     } else {
-    	msg_type = get_msg_type(&msg);
+    	msg_type = get_msg_type(&msg_ptr);
     	if(iReturn != NO_ERROR || msg_type != UNLOCK_RSP) {
     		printf("Client: No unlock response received: %d\n\n", iReturn);
     	} else {
