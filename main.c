@@ -16,14 +16,14 @@
 #include "VS_LAB/commonAPI.h"
 #include "VS_LAB/Macros.h"
 
-#define BLOCKLEN 16500
+#define BLOCKLEN 1024
 
 // Arguments:
 // vslabc <infile> <outfile> <ip>
 int main(int argc, char **argv)
 {
     uint8_t gp[2], **out_data, iReturn, *ip_ptr;
-    uint16_t in_data[BLOCKLEN], resBlockID, blockID = 0;
+    uint16_t in_data[BLOCKLEN], resBlockID, blockID = 0, port;
 	uint32_t senderIP, length, i;
 	bool newDataWanted = true;
 	FILE *fpIn, *fpOut;
@@ -66,7 +66,7 @@ int main(int argc, char **argv)
 
     while(1)
     {  	// send it out
-    	iReturn = send_gp_req((gp[0] << 8) + gp[1], inet_network(argv[3]));
+        iReturn = send_gp_req((gp[0] << 8) + gp[1], inet_network(argv[3]), SERVER_PORT);
     	if(iReturn != NO_ERROR) {
     		printf("Client: GP %#x sent out failed: %d\n", (gp[0] << 8) + gp[1], iReturn);
     		sleep(1); continue;
@@ -76,7 +76,7 @@ int main(int argc, char **argv)
 
     	// receive gp-set-response
     	tol_start_timeout(TOL_TIMEOUT_SECS);
-    	iReturn = recv_msg(&msg, &senderIP);
+        iReturn = recv_msg(&msg, &senderIP, &port);
     	tol_stop_timeout();
         if(tol_is_timed_out()) {
             tol_reset_timeout();
@@ -128,7 +128,7 @@ int main(int argc, char **argv)
 		}
 
 		// send it out
-		iReturn = send_dec_req(blockID, in_data, length, inet_network(argv[3]));
+        iReturn = send_dec_req(blockID, in_data, length, inet_network(argv[3]), SERVER_PORT);
 		if(iReturn != NO_ERROR) {
 			printf("Client: Sending out data was not successful: %d\n", iReturn);
 			sleep(0.5); continue;
@@ -138,7 +138,7 @@ int main(int argc, char **argv)
 
 		// receive scrambled data
 		tol_start_timeout(TOL_TIMEOUT_SECS);
-		iReturn = recv_msg(&msg, &senderIP);
+        iReturn = recv_msg(&msg, &senderIP, &port);
 		tol_stop_timeout();
         if (tol_is_timed_out()) {
             tol_reset_timeout();
@@ -183,7 +183,7 @@ int main(int argc, char **argv)
 	/********** UNLOCK SERVER ************************************************/
 
    	// unlock server
-   	iReturn = send_unlock_req(inet_network(argv[3]));
+    iReturn = send_unlock_req(inet_network(argv[3]), SERVER_PORT);
    	if(iReturn != NO_ERROR) {
    		printf("Client: Sending unlock request was not successful: %d\n", iReturn);
    	} else {
@@ -192,7 +192,7 @@ int main(int argc, char **argv)
 
    	// receive unlock response
    	tol_start_timeout(TOL_TIMEOUT_SECS);
-   	iReturn = recv_msg(&msg, &senderIP);
+    iReturn = recv_msg(&msg, &senderIP, &port);
 	tol_stop_timeout();
     if (tol_is_timed_out()) {
         tol_reset_timeout();
