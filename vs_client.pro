@@ -1,4 +1,4 @@
-QT += core
+QT += core network
 QT -= gui
 
 TARGET = vs_client
@@ -10,7 +10,8 @@ TEMPLATE = app
 SOURCES += main.cpp \
     VS_LAB/clientAPI.c \
     VS_LAB/PacketLib.c \
-    vs_client.cpp
+    vs_client.cpp \
+    vs_server.cpp
 
 HEADERS += \
     VS_LAB/clientAPI.h \
@@ -18,5 +19,6 @@ HEADERS += \
     VS_LAB/internalMacros.h \
     VS_LAB/Macros.h \
     VS_LAB/PacketLib.h \
-    vs_client.h
+    vs_client.h \
+    vs_server.h
 

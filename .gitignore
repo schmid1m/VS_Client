@@ -1,1 +1,6 @@
 *.user
+*.o
+*.txt
+Makefile
+vs_client
+vslabc
