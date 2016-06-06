@@ -13,6 +13,8 @@
 
 #include "vs_server.h"
 
+#define BLOCK_SIZE 16//500
+
 class VS_Client : public QObject
 {
     Q_OBJECT
@@ -20,7 +22,7 @@ public:
     VS_Client(QCoreApplication* parent, QString infile, QString outfile, int16_t cid, u_int8_t priority, u_int32_t bca);
     ~VS_Client();
 
-    void start();
+    bool start();
 
 private:
     QCoreApplication* parent;
@@ -31,7 +33,10 @@ private:
     QString infile_str;
     QString outfile_str;
 
-    QTimer broadcast_timer, server_active_timer;
+    u_int64_t number_of_blocks;
+    u_int16_t gp;
+
+    QTimer broadcast_timer, server_active_timer, idle_timeout;
 
     MyQtSocket *sock;
 
@@ -39,6 +44,7 @@ private:
     u_int16_t server_list_len;
 
     void updateServer(u_int32_t server_ip);
+    u_int64_t readFromFile(u_int16_t* data, u_int64_t len);
 
 signals:
 
@@ -48,6 +54,7 @@ private slots:
     void sendBroadcast();
     void cleanServerList();
     void msgReceive();
+    void shutDownClient();
 };
 
 #endif // VS_CLIENT_H
