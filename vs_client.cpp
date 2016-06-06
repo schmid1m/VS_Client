@@ -11,6 +11,8 @@ VS_Client::VS_Client(QCoreApplication *parent, QString infile, QString outfile, 
     this->bca = bca;
     this->infile_str = infile;
     this->outfile_str = outfile;
+
+    sock = new MyQtSocket;
 }
 
 VS_Client::~VS_Client()
@@ -25,16 +27,17 @@ void VS_Client::start()
         cout << "ERROR: Could not init the client API\n Aborting Execution\n";
         parent->exit();
     }
+//    connect(this, SIGNAL(newMsg(msg,u_int8_t,u_int32_t)),this,SLOT(decodeMsg(msg,u_int8_t,u_int32_t)));
 
-    connect(this, SIGNAL(newMsg(msg,u_int8_t,u_int32_t)),this,SLOT(decodeMsg(msg,u_int8_t,u_int32_t)));
+    connect(&MyQtSocket::my_sock, SIGNAL(readyRead()), this,SLOT(msgReceive()));
 
-    broadcastTimer.setInterval(1000);
-    connect(&broadcastTimer, SIGNAL(timeout()), this,SLOT(sendBroadcast()));
-    broadcastTimer.start();
+    broadcast_timer.setInterval(1000);
+    connect(&broadcast_timer, SIGNAL(timeout()), this,SLOT(sendBroadcast()));
+    broadcast_timer.start();
 
-    serverActiveTimer.setInterval(1000);
-    connect(&serverActiveTimer, SIGNAL(timeout()), this, SLOT(cleanServerList()));
-    serverActiveTimer.start();
+    server_active_timer.setInterval(1000);
+    connect(&server_active_timer, SIGNAL(timeout()), this, SLOT(cleanServerList()));
+    server_active_timer.start();
 }
 
 void VS_Client::sendBroadcast()
@@ -50,18 +53,11 @@ void VS_Client::cleanServerList()
 
 void VS_Client::msgReceive()
 {
+    cout<<"Packet Received\n";
     uint8_t err;
     msg packet;
     uint16_t dummy_port;
     uint32_t src_ip;
-    while(1)
-    {
-        err = recv_msg(&packet, &src_ip, &dummy_port);
-        emit newMsg(packet, err, src_ip);
-    }
-}
-
-void VS_Client::decodeMsg(msg packet, u_int8_t err, u_int32_t src_ip)
-{
-    cout<<"Packet Received\n";
+    err = sock->Read(&packet, &src_ip, &dummy_port);
+    cout << "error: " << (int)err << endl;
 }

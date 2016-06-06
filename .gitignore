@@ -4,3 +4,4 @@
 Makefile
 vs_client
 vslabc
+moc_*

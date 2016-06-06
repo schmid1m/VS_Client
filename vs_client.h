@@ -10,6 +10,8 @@
 #include "VS_LAB/commonAPI.h"
 #include "VS_LAB/Macros.h"
 
+#include "VS_LAB/myqtsocket.h"
+
 class VS_Client : public QObject
 {
     Q_OBJECT
@@ -28,11 +30,11 @@ private:
     QString infile_str;
     QString outfile_str;
 
-    QTimer broadcastTimer, serverActiveTimer;
+    QTimer broadcast_timer, server_active_timer;
+
+    MyQtSocket *sock;
 
 signals:
-    void startReceiving();
-    void newMsg(msg packet, u_int8_t err, u_int32_t src_ip);
 
 public slots:
 
@@ -40,7 +42,6 @@ private slots:
     void sendBroadcast();
     void cleanServerList();
     void msgReceive();
-    void decodeMsg(msg packet, u_int8_t err, u_int32_t src_ip);
 };
 
 #endif // VS_CLIENT_H
