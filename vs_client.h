@@ -9,8 +9,9 @@
 #include "VS_LAB/clientAPI.h"
 #include "VS_LAB/commonAPI.h"
 #include "VS_LAB/Macros.h"
-
 #include "VS_LAB/myqtsocket.h"
+
+#include "vs_server.h"
 
 class VS_Client : public QObject
 {
@@ -33,6 +34,11 @@ private:
     QTimer broadcast_timer, server_active_timer;
 
     MyQtSocket *sock;
+
+    VS_Server** server_list;
+    u_int16_t server_list_len;
+
+    void updateServer(u_int32_t server_ip);
 
 signals:
 

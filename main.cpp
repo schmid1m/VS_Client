@@ -39,10 +39,11 @@ int main(int argc, char *argv[])
             "client IP    : " << clientID << endl <<
             "Priority     : " << (u_int16_t)priority << endl <<
             "Broadcast IP : " << argv[5] << endl <<
-            "               " << (hex) << broadcastIP << "\n\n";
+            "               " << (hex) << broadcastIP << endl <<
+            "               " << QHostAddress::Broadcast << "\n\n";
 
 
-    client = new VS_Client(&a,  infile, outfile, clientID, (u_int8_t)priority, broadcastIP);
+    client = new VS_Client(&a,  infile, outfile, clientID, (u_int8_t)priority, QHostAddress::Broadcast);
 
     client->start();
 
