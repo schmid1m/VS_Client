@@ -174,101 +174,104 @@ void VS_Client::msgReceive()
     u_int32_t data_len;
     uint8_t err_code;
 
-    err = sock->Read(&packet, &src_ip, &dummy_port);
-    if(err != NO_ERROR)
+    while(sock->my_sock.bytesAvailable() != 0)
     {
-        cout << "Packet error: " << (int)err << endl;
-        free_msg(&packet);
-        return;
-    }
-    idle_timeout.stop();
-    idle_timeout.start();
+        err = sock->Read(&packet, &src_ip, &dummy_port);
+        if(err != NO_ERROR)
+        {
+            cout << "Packet error: " << (int)err << endl;
+            free_msg(&packet);
+            continue;
+        }
+        idle_timeout.stop();
+        idle_timeout.start();
 
-    addr.setAddress(src_ip);
-    FID fid = get_msg_type(&packet);
-    switch(fid)
-    {
-        case BROADCAST_RSP:
-            cout << "Received Broadcast response from " << addr.toString().toStdString() << endl;
-            err = extract_brdcst_rsp(&packet);
-            if (err != NO_ERROR)
-            {
-                cout << "Got error " << err << "during extraction\n";
-            }
-            else
-            {
-                updateServer(src_ip);
-            }
-            break;
-        case GP_RSP:
-            cout << "Received GP response from " << addr.toString().toStdString() << endl;
-            err = extract_gp_rsp(&packet);
-            if (err != NO_ERROR)
-            {
-                cout << "Got error " << err << "during extraction\n";
-            }
-            else
-            {
+        addr.setAddress(src_ip);
+        FID fid = get_msg_type(&packet);
+        switch(fid)
+        {
+            case BROADCAST_RSP:
+                cout << "Received Broadcast response from " << addr.toString().toStdString() << endl;
+                err = extract_brdcst_rsp(&packet);
+                if (err != NO_ERROR)
+                {
+                    cout << "Got error " << err << "during extraction\n";
+                }
+                else
+                {
+                    updateServer(src_ip);
+                }
+                break;
+            case GP_RSP:
+                cout << "Received GP response from " << addr.toString().toStdString() << endl;
+                err = extract_gp_rsp(&packet);
+                if (err != NO_ERROR)
+                {
+                    cout << "Got error " << err << "during extraction\n";
+                }
+                else
+                {
+                    setServerState(src_ip, STATE_LOCKED);
+                    sendBlock(src_ip);
+                }
+                break;
+            case DECRYPT_RSP:
+                cout << "Received Decrypt response from " << addr.toString().toStdString() << endl;
+                err = extract_dec_rsp(&packet, &bid, &data, &data_len);
+                if (err != NO_ERROR)
+                {
+                    cout << "Got error " << err << "during extraction\n";
+                }
+                if(data_len < 65)
+                {
+                    data[data_len] = '\0';
+                    cout << "Decrypted text\"" << data << "\"\n";
+                }
+                if(!saveBlock(data,data_len,bid))
+                {
+                    cout << "Unable to save block\n";
+                }
                 setServerState(src_ip, STATE_LOCKED);
                 sendBlock(src_ip);
-            }
-            break;
-        case DECRYPT_RSP:
-            cout << "Received Decrypt response from " << addr.toString().toStdString() << endl;
-            err = extract_dec_rsp(&packet, &bid, &data, &data_len);
-            if (err != NO_ERROR)
-            {
-                cout << "Got error " << err << "during extraction\n";
-            }
-            if(data_len < 65)
-            {
-                data[data_len] = '\0';
-                cout << "Decrypted text\"" << data << "\"\n";
-            }
-            if(!saveBlock(data,data_len,bid))
-            {
-                cout << "Unable to save block\n";
-            }
-            setServerState(src_ip, STATE_LOCKED);
-            sendBlock(src_ip);
-            break;
-        case UNLOCK_RSP:
-            cout << "Received Unlock response from " << addr.toString().toStdString() << endl;
-            err = extract_unlock_rsp(&packet);
-            if (err != NO_ERROR)
-            {
-                cout << "Got error " << err << "during extraction\n";
-            }
-            break;
-        case ERROR_RSP:
-            cout << "Received Error frame from " << addr.toString().toStdString() << endl;
-            err = extract_error_rsp(&packet, &err_code, &bid);
-            if (err != NO_ERROR)
-            {
-                cout << "Got error " << err << "during extraction\n";
-            }
-            cout << "Received error " << err_code << " from " << addr.toString().toStdString() << endl;
-            break;
-        default:
-            cout<<"Unknown Packet Received from " << addr.toString().toStdString() << endl;
-            switch(err_code)
-            {
-                case ERR_SERVERINUSE:
-                    break;
-                case ERR_LOCK_TIMEOUT:
-                    break;
-                case ERR_NOTFORME:
-                    break;
-                case ERR_NO_GP:
-                    break;
-                case ERR_DECRYPT:
-                    break;
-                default:
-                    break;
-            }
-            break;
+                break;
+            case UNLOCK_RSP:
+                cout << "Received Unlock response from " << addr.toString().toStdString() << endl;
+                err = extract_unlock_rsp(&packet);
+                if (err != NO_ERROR)
+                {
+                    cout << "Got error " << err << "during extraction\n";
+                }
+                break;
+            case ERROR_RSP:
+                cout << "Received Error frame from " << addr.toString().toStdString() << endl;
+                err = extract_error_rsp(&packet, &err_code, &bid);
+                if (err != NO_ERROR)
+                {
+                    cout << "Got error " << err << "during extraction\n";
+                }
+                cout << "Received error " << err_code << " from " << addr.toString().toStdString() << endl;
+                break;
+            default:
+                cout<<"Unknown Packet Received from " << addr.toString().toStdString() << endl;
+                switch(err_code)
+                {
+                    case ERR_SERVERINUSE:
+                        break;
+                    case ERR_LOCK_TIMEOUT:
+                        break;
+                    case ERR_NOTFORME:
+                        break;
+                    case ERR_NO_GP:
+                        break;
+                    case ERR_DECRYPT:
+                        break;
+                    default:
+                        break;
+                }
+                break;
+        }
+        free_msg(&packet);
     }
-    free_msg(&packet);
 }
 
 void VS_Client::updateServer(u_int32_t server_ip)
@@ -278,8 +281,11 @@ void VS_Client::updateServer(u_int32_t server_ip)
     {
         if(server_list[i]->getIp() == server_ip)
         {
-            server_list[i]->refreshTTD();
-            cout << "Updated server with ip " << addr.toString().toStdString() << endl;
+            if(server_list[i]->getState() == STATE_DECRYPTING)
+            {
+                server_list[i]->refreshTTD();
+                cout << "Updated server with ip " << addr.toString().toStdString() << endl;
+            }
             return;
         }
     }
@@ -352,6 +358,7 @@ void VS_Client::sendBlock(u_int32_t server_ip)
                 }
                 server_list[i]->setBlockId(blk);
                 server_list[i]->setState(STATE_DECRYPTING);
+                server_list[i]->refreshTTD();
                 send_dec_req(blk & 0xFFFF, in_data_buff, read_len / 2, server_ip, SERVER_PORT);
                 cout << "Sent out block " << blk << " to be decrypted by " << addr.toString().toStdString() << endl;
                 blocks[blk] = BLK_STATE_RUNNING;
@@ -417,6 +424,7 @@ bool VS_Client::saveBlock(u_int8_t *data, u_int64_t data_len, u_int16_t bid)
     }
     return false;
 }
+
 void VS_Client::saveFinalFile()
 {
     QFile file;

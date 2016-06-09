@@ -13,8 +13,8 @@
 
 #include "vs_server.h"
 
-//#define BLOCK_SIZE 16500
-#define BLOCK_SIZE 5000
+#define BLOCK_SIZE 16500
+//#define BLOCK_SIZE 5000
 
 typedef enum {
     BLK_STATE_TODO,
