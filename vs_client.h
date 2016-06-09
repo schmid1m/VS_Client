@@ -13,7 +13,14 @@
 
 #include "vs_server.h"
 
-#define BLOCK_SIZE 16//500
+//#define BLOCK_SIZE 16500
+#define BLOCK_SIZE 5000
+
+typedef enum {
+    BLK_STATE_TODO,
+    BLK_STATE_RUNNING,
+    BLK_STATE_DONE
+}BLOCK_STATE;
 
 class VS_Client : public QObject
 {
@@ -34,6 +41,8 @@ private:
     QString outfile_str;
 
     u_int64_t number_of_blocks;
+    BLOCK_STATE *blocks;
+
     u_int16_t gp;
 
     QTimer broadcast_timer, server_active_timer, idle_timeout;
@@ -43,8 +52,16 @@ private:
     VS_Server** server_list;
     u_int16_t server_list_len;
 
+    uint16_t in_data_buff[BLOCK_SIZE];
+
     void updateServer(u_int32_t server_ip);
-    u_int64_t readFromFile(u_int16_t* data, u_int64_t len);
+    void setServerState(u_int32_t server_ip, SERVER_STATE state);
+    u_int64_t readFromFile(u_int16_t* data, u_int64_t len, u_int64_t pos);
+    void sendBlock(u_int32_t server_ip);
+    u_int64_t getNextFreeBlock();
+    u_int64_t resolveShortBid(u_int16_t bid);
+    bool saveBlock(u_int8_t* data, u_int64_t data_len, u_int16_t bid);
+    void saveFinalFile();
 
 signals:
 

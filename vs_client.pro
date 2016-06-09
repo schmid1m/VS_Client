@@ -1,6 +1,8 @@
 QT += core network
 QT -= gui
 
+QMAKE_LFLAGS += -static-libstdc++
+
 TARGET = vs_client
 CONFIG += console
 CONFIG -= app_bundle

@@ -5,7 +5,7 @@ VS_Server::VS_Server(u_int32_t ip, SERVER_STATE state)
     server_ip = ip;
     server_status = state;
     time_to_death = TIME_TO_DEATH;
-    block_id = 0;
+    block_id = 0xFFFFFFFFFFFFFFFF;
 }
 
 VS_Server::~VS_Server()
@@ -44,12 +44,12 @@ void VS_Server::decrementTTD()
         time_to_death --;
 }
 
-u_int16_t VS_Server::getBlockId()
+u_int64_t VS_Server::getBlockId()
 {
     return block_id;
 }
 
-void VS_Server::setBlockId(u_int16_t block_id)
+void VS_Server::setBlockId(u_int64_t block_id)
 {
     this->block_id = block_id;
 }
