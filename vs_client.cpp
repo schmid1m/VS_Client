@@ -30,7 +30,7 @@ VS_Client::VS_Client(QCoreApplication *parent, QString infile, QString outfile, 
 
 VS_Client::~VS_Client()
 {
-    for(u_int16_t i; i < server_list_len; i++)
+    for(u_int16_t i = 0; i < server_list_len; i++)
         delete(server_list[i]);
     delete(server_list);
 }
