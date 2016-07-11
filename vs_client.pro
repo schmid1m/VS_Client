@@ -15,5 +15,6 @@ HEADERS += \
     VS_LAB/internalMacros.h \
     VS_LAB/Macros.h \
     VS_LAB/PacketLib.h \
-    timeoutlib.h
+    timeoutlib.h \
+    main.h
 
